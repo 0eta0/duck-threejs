@@ -1,0 +1,251 @@
+<html>
+
+	<head>
+		<meta charset="utf-8" />
+		<script src="js/paho-mqtt.js"></script>
+		<script src="js/three.min.js"></script>
+		<script src="js/OrbitControls.js"></script>
+		<script src="js/STLLoader.js"></script>
+	</head>
+
+	<style>
+		body {
+			margin: 0;
+			display: flex;
+			flex-flow: row nowrap;
+			font-family: 'Avenir','Helvetica Neue','Helvetica','Arial','Hiragino Sans','ヒラギノ角ゴシック',YuGothic,'Yu Gothic','メイリオ', Meiryo,'ＭＳ Ｐゴシック','MS PGothic',sans-serif;
+		}
+		.console {
+			height: 100vh;
+			width: 300px;
+			font-size: 25px;
+		}
+		.console-head {
+			height: 50px;
+			width: 300px;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			color: white;
+			background-color: grey;
+		}
+		#console-table {
+			height: calc(100vh - 50px);
+			overflow-y: scroll;
+		}
+		#console-table div {
+			height: auto;
+			padding: 10px; 
+			color: black;
+			background-color: whitesmoke;
+			font-size: 0.5em;
+		}
+	</style>
+	<body>
+		<canvas id="ThreejsCanvas"></canvas>
+		<div class="console">
+			<div class="console-head">Console</div>
+			<div id="console-table">
+			</div>
+		</div>
+		<script>
+			//Wait for loading
+			window.addEventListener('load', init);
+			
+			let rover = null;
+			let roverDirection = 0;
+			let backWall, frontWall, leftWall, rightWall;
+
+			function init() {
+
+				const width = window.innerWidth - 300;
+				const height = window.innerHeight;
+
+				const renderer = new THREE.WebGLRenderer({
+					canvas: document.querySelector('#ThreejsCanvas')
+				});
+				renderer.setPixelRatio(window.devicePixelRatio);
+				renderer.setSize(width, height);
+
+				const scene = new THREE.Scene();
+				//Camera
+				const camera = new THREE.PerspectiveCamera(
+					45,
+					width / height,
+					0.1,
+					10000
+				);
+				camera.position.set(0, 200, 400);
+
+				//Camera controll
+				const controls = new THREE.OrbitControls(camera);
+				controls.target.set(0, 3, 0);
+				controls.enableZoom = false;
+				controls.enableRotate = false;
+				controls.update();
+
+				//Light
+				const directionalLight = new THREE.DirectionalLight(0xffffff);
+				directionalLight.position.set(1, 1, 1);
+				scene.add(directionalLight);
+				const ambientLight = new THREE.AmbientLight(0x333333);
+				scene.add(ambientLight);
+
+				//Grid
+				const gridHelper = new THREE.GridHelper( 1000, 20, new THREE.Color( 0xffffff ), new THREE.Color( 0xffffff ));
+				scene.add( gridHelper );
+
+				//Wall
+				const wallColor = [
+					new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 0.0, transparent: true}), // right
+					new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 0.0, transparent: true}), // left
+					new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 0.0, transparent: true}), // front
+					new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 0.0, transparent: true}), // back
+					new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 0.0, transparent: true}), // top
+					new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 0.0, transparent: true}), // bottom
+				];
+				let wallCube = new THREE.BoxGeometry(200, 140, 10);
+				backWall = new THREE.Mesh( wallCube, wallColor );
+				backWall.position.z = -130;
+				backWall.position.y = 70;
+				backWall.visible = false;
+				scene.add( backWall );
+
+				frontWall = new THREE.Mesh( wallCube, wallColor );
+				frontWall.position.z = 130;
+				frontWall.position.y = 70;
+				frontWall.visible = false;
+				scene.add( frontWall );
+
+				wallCube = new THREE.BoxGeometry(10, 140, 200);
+				leftWall = new THREE.Mesh( wallCube, wallColor );
+				leftWall.position.x = -130;
+				leftWall.position.y = 70;
+				leftWall.visible = false;
+				scene.add( leftWall );
+
+				rightWall = new THREE.Mesh( wallCube, wallColor );
+				rightWall.position.x = 130;
+				rightWall.position.y = 70;
+				rightWall.visible = false;
+				scene.add( rightWall );
+
+				const loader = new THREE.STLLoader();
+				loader.load('./duck.stl', function (geometry) {
+					const material = new THREE.MeshLambertMaterial({
+						ambient: 0xffffff,
+						color: 0xffff00
+					});
+					rover = new THREE.Mesh(geometry, material);
+					rover.rotation.y = Math.PI/2;
+					scene.add(rover);
+				});
+				tick();
+
+				function tick() {
+					renderer.render(scene, camera);
+					requestAnimationFrame(tick);
+				}
+			}
+
+			function turnAnime(rad, ms) {
+				let count = 1;
+				var id = setInterval(() => {
+					rover.rotation.y += rad / ms;		
+					if (count >= ms) clearInterval(id);
+					count += 1;
+				}, 1);
+			}
+
+			function wallAnime(inout, wallDirection) {
+				const walls = [backWall, rightWall, frontWall, leftWall];
+				const wall = walls[(roverDirection + wallDirection) % 4];
+				let count = 1;
+				wall.visible = (!inout && wall.material[0].opacity == 0 ? false : true);
+				
+				var id = setInterval(() => {
+					for (let index = 0; index < 6; index++) {
+						wall.material[index].opacity = (inout ? 0.5 : -0.5) / 100 * count;
+					}
+					if (count >= 100) {
+						if (inout) {
+							for (let index = 0; index < 6; index++) wall.material[index].opacity = 0.5;
+						} else {
+							for (let index = 0; index < 6; index++) wall.material[index].opacity = 0.0;
+							wall.visible = false;
+						}
+						clearInterval(id);
+					}
+					count += 1;
+				}, 1);
+			}
+
+			function visibleAllWalls() {
+				wallAnime(false, 0);
+				wallAnime(false, 1);
+				wallAnime(false, 2);
+				wallAnime(false, 3);
+			}
+
+			function addLog(text) {
+				const now = new Date;
+				const newNode = document.createElement("div");
+				newNode.appendChild(document.createTextNode(`${now.getHours()}:${now.getMinutes()}:${now.getSeconds()}(${now.getMilliseconds()}) ${text}`))
+				const pElement = document.getElementById("console-table");
+				pElement.insertBefore(newNode, pElement.firstChild);
+			}
+
+			const client = new Paho.MQTT.Client("broker.mqtt-dashboard.com", 8000, "clientId-wREnNxL12n");
+			client.onConnectionLost = onConnectionLost;
+			client.onMessageArrived = onMessageArrived;
+			client.connect({
+				onSuccess: onConnect
+			});
+
+			function onConnect() {
+				addLog("Connect to broker with MQTT!");
+				client.subscribe("/test");
+			};
+
+			function onConnectionLost(responseObject) {
+				if (responseObject.errorCode !== 0)
+					console.log("connectionLost:" + responseObject.errorMessage);
+			};
+
+			let before = null;
+
+			function onMessageArrived(message) {
+				if (message.payloadString == "0") {
+					if (before === message.payloadString) return;
+					else before = message.payloadString;
+					addLog("Go straight");
+					visibleAllWalls();
+				} else if (message.payloadString == "1") {
+					if (before === message.payloadString) return;
+					else before = message.payloadString;
+					addLog("Detect front side wall");
+					addLog("Stop");
+					wallAnime(true, 0);
+				} else if (message.payloadString == "2") {
+					if (before === message.payloadString) return;
+					else before = message.payloadString;
+					wallAnime(true, 3);
+					turnAnime(-Math.PI / 2, 100);
+					roverDirection = (roverDirection + 1) % 4;
+					addLog("Detect left side wall");
+					addLog("Turn right");
+				} else if (message.payloadString == "3") {
+					if (before === message.payloadString) return;
+					else before = message.payloadString;
+					wallAnime(true, 1);
+					turnAnime(Math.PI / 2, 100);
+					roverDirection = (roverDirection + 3) % 4;
+					addLog("Detect right side wall");
+					addLog("Turn left");
+				}else {
+					console.log("OTHER CODE COMMING", message.payloadString);
+				}
+			};
+		</script>
+	</body>
+</html>
