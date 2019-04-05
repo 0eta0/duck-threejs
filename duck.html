@@ -82,7 +82,7 @@
 				const controls = new THREE.OrbitControls(camera);
 				controls.target.set(0, 3, 0);
 				controls.enableZoom = false;
-				controls.enableRotate = false;
+				// controls.enableRotate = false;
 				controls.update();
 
 				//Light
@@ -252,7 +252,7 @@
 			}
 
 			//MQTT
-			const client = new Paho.MQTT.Client("broker.mqtt-dashboard.com", 8000, "clientId-wREnNxL12n");
+			const client = new Paho.MQTT.Client("192.168.1.3", 8080, "clientId-wREnNxL12n");
 			client.onConnectionLost = onConnectionLost;
 			client.onMessageArrived = onMessageArrived;
 			client.connect({
@@ -261,7 +261,7 @@
 
 			function onConnect() {
 				addLog("Connect to broker with MQTT!");
-				client.subscribe("/test");
+				client.subscribe("test");
 			};
 
 			function onConnectionLost(responseObject) {
@@ -270,41 +270,42 @@
 			};
 
 			let before = null;
+			let beforeArrivedTime = 0;
 
 			function onMessageArrived(message) {
+				let nowTime = Date.now();
+				if (nowTime - beforeArrivedTime < 100) return;
+				beforeArrivedTime = nowTime; 
+				
 				const walls = [backWall, rightWall, frontWall, leftWall];
 				if (message.payloadString == "0") {
-					// if (before === message.payloadString) return;
-					// else before = message.payloadString;					
+					if (before === message.payloadString) return;
+					else before = message.payloadString;					
 					arrowAnimeStart();
 					addLog("Go straight");
 					visibleAllWalls();
 				} else if (message.payloadString == "1") {
-					// if (before === message.payloadString) return;
-					// else before = message.payloadString;
+					if (before === message.payloadString) return;
+					else before = message.payloadString;
 					arrowAnimeStop();
 					opacityAnime(walls[(0 + roverDirection) % 4], true, 0.5);
 					addLog("Detect front side wall");
 					addLog("Stop");
 				} else if (message.payloadString == "2") {
-					// if (before === message.payloadString) return;
-					// else before = message.payloadString;
+					if (before === message.payloadString) return;
+					else before = message.payloadString;
 					arrowAnimeStop();
-					opacityAnime(walls[(3 + roverDirection) % 4], true, 0.5);
 					rotateAnime(rover, -Math.PI / 2, 100);
 					rotateAnime(arrowGroup, -Math.PI / 2, 100);
 					roverDirection = (roverDirection + 1) % 4;
-					addLog("Detect left side wall");
 					addLog("Turn right");
 				} else if (message.payloadString == "3") {
-					// if (before === message.payloadString) return;
-					// else before = message.payloadString;
+					if (before === message.payloadString) return;
+					else before = message.payloadString;
 					arrowAnimeStop();
-					opacityAnime(walls[(1 + roverDirection) % 4], true, 0.5);
 					rotateAnime(rover, Math.PI / 2, 100);
 					rotateAnime(arrowGroup, Math.PI / 2, 100);
 					roverDirection = (roverDirection + 3) % 4;
-					addLog("Detect right side wall");
 					addLog("Turn left");
 				}else {
 					console.log("OTHER CODE COMMING", message.payloadString);
