@@ -150,11 +150,13 @@
 				arrow1.position.x = -15;
 				arrow1.position.y = 90;
 				arrow1.rotation.y = Math.PI / 4;
+				arrow1.visible = false;
 				arrowGroup.add( arrow1 );
 				let arrow2 = new THREE.Mesh( new THREE.BoxGeometry(50, 10, 10), directionColor() );
 				arrow2.position.x = 15;
 				arrow2.position.y = 90;
 				arrow2.rotation.y = -Math.PI / 4;
+				arrow2.visible = false;
 				arrowGroup.add( arrow2 );
 				scene.add( arrowGroup );
 
