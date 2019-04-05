@@ -55,6 +55,7 @@
 			let rover = null;
 			let roverDirection = 0;
 			let backWall, frontWall, leftWall, rightWall;
+			let arrowGroup;
 
 			function init() {
 
@@ -75,7 +76,7 @@
 					0.1,
 					10000
 				);
-				camera.position.set(0, 200, 400);
+				camera.position.set(0, 250, 400);
 
 				//Camera controll
 				const controls = new THREE.OrbitControls(camera);
@@ -95,40 +96,67 @@
 				const gridHelper = new THREE.GridHelper( 1000, 20, new THREE.Color( 0xffffff ), new THREE.Color( 0xffffff ));
 				scene.add( gridHelper );
 
-				//Wall
-				const wallColor = [
-					new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 0.0, transparent: true}), // right
-					new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 0.0, transparent: true}), // left
-					new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 0.0, transparent: true}), // front
-					new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 0.0, transparent: true}), // back
-					new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 0.0, transparent: true}), // top
-					new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 0.0, transparent: true}), // bottom
-				];
+				const wallColor = () => {
+					return [
+						new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 0.0, transparent: true}), // right
+						new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 0.0, transparent: true}), // left
+						new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 0.0, transparent: true}), // front
+						new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 0.0, transparent: true}), // back
+						new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 0.0, transparent: true}), // top
+						new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 0.0, transparent: true}), // bottom
+					];
+				}
+
 				let wallCube = new THREE.BoxGeometry(200, 140, 10);
-				backWall = new THREE.Mesh( wallCube, wallColor );
+				backWall = new THREE.Mesh( wallCube, wallColor() );
 				backWall.position.z = -130;
 				backWall.position.y = 70;
 				backWall.visible = false;
 				scene.add( backWall );
 
-				frontWall = new THREE.Mesh( wallCube, wallColor );
+				frontWall = new THREE.Mesh( wallCube, wallColor() );
 				frontWall.position.z = 130;
 				frontWall.position.y = 70;
 				frontWall.visible = false;
 				scene.add( frontWall );
 
 				wallCube = new THREE.BoxGeometry(10, 140, 200);
-				leftWall = new THREE.Mesh( wallCube, wallColor );
+				leftWall = new THREE.Mesh( wallCube, wallColor() );
 				leftWall.position.x = -130;
 				leftWall.position.y = 70;
 				leftWall.visible = false;
 				scene.add( leftWall );
 
-				rightWall = new THREE.Mesh( wallCube, wallColor );
+				rightWall = new THREE.Mesh( wallCube, wallColor() );
 				rightWall.position.x = 130;
 				rightWall.position.y = 70;
 				rightWall.visible = false;
 				scene.add( rightWall );
+
+				const directionColor = () => {
+					return [
+						new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 1.0, transparent: true}), // right
+						new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 1.0, transparent: true}), // left
+						new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 1.0, transparent: true}), // front
+						new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 1.0, transparent: true}), // back
+						new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 1.0, transparent: true}), // top
+						new THREE.MeshBasicMaterial({color: 0xFFFFFF, opacity: 1.0, transparent: true}), // bottom
+					];
+				}
+
+				//Direction arrow
+				arrowGroup = new THREE.Group();
+				let arrow1 = new THREE.Mesh( new THREE.BoxGeometry(50, 10, 10), directionColor() );
+				arrow1.position.x = -15;
+				arrow1.position.y = 90;
+				arrow1.rotation.y = Math.PI / 4;
+				arrowGroup.add( arrow1 );
+				let arrow2 = new THREE.Mesh( new THREE.BoxGeometry(50, 10, 10), directionColor() );
+				arrow2.position.x = 15;
+				arrow2.position.y = 90;
+				arrow2.rotation.y = -Math.PI / 4;
+				arrowGroup.add( arrow2 );
+				scene.add( arrowGroup );
 
 				const loader = new THREE.STLLoader();
 				loader.load('./duck.stl', function (geometry) {
@@ -138,6 +166,7 @@
 					});
 					rover = new THREE.Mesh(geometry, material);
 					rover.rotation.y = Math.PI/2;
+					// rover.visible = false;
 					scene.add(rover);
 				});
 				tick();
@@ -148,45 +177,70 @@
 				}
 			}
 
-			function turnAnime(rad, ms) {
+			//Animations
+			function rotateAnime(obj, rad, ms) {
 				let count = 1;
 				var id = setInterval(() => {
-					rover.rotation.y += rad / ms;		
+					obj.rotation.y += rad / ms;		
 					if (count >= ms) clearInterval(id);
 					count += 1;
 				}, 1);
 			}
 
-			function wallAnime(inout, wallDirection) {
-				const walls = [backWall, rightWall, frontWall, leftWall];
-				const wall = walls[(roverDirection + wallDirection) % 4];
-				let count = 1;
-				wall.visible = (!inout && wall.material[0].opacity == 0 ? false : true);
+			function opacityAnime(obj, inout, opacity) {
+				if (inout === obj.visible) return;
+				for (let index = 0; index < 6; index++) obj.material[index].opacity = (inout ? 0.0 : opacity);
+				obj.visible = true;
 				
+				let count = 1;
+				const millSeconds = 50;
 				var id = setInterval(() => {
-					for (let index = 0; index < 6; index++) {
-						wall.material[index].opacity = (inout ? 0.5 : -0.5) / 100 * count;
-					}
-					if (count >= 100) {
-						if (inout) {
-							for (let index = 0; index < 6; index++) wall.material[index].opacity = 0.5;
-						} else {
-							for (let index = 0; index < 6; index++) wall.material[index].opacity = 0.0;
-							wall.visible = false;
-						}
+					for (let index = 0; index < 6; index++) obj.material[index].opacity += (inout ? opacity : -opacity) / millSeconds;					
+					if (count >= millSeconds) {
+						obj.visible = inout;
 						clearInterval(id);
 					}
 					count += 1;
 				}, 1);
 			}
 
-			function visibleAllWalls() {
-				wallAnime(false, 0);
-				wallAnime(false, 1);
-				wallAnime(false, 2);
-				wallAnime(false, 3);
+			let arrowAnimeId = null;
+			function arrowAnimeStart(rad) {
+				if (arrowAnimeId !== null) return;
+				opacityAnime(arrowGroup.children[0], true, 1.0);
+				opacityAnime(arrowGroup.children[1], true, 1.0);
+				let count = 0;
+				arrowAnimeId = setInterval(() => {
+					if (arrowGroup.children[0].visible === false) {
+						clearInterval(arrowAnimeId);
+						arrowAnimeId = null;
+						arrowGroup.position.x = 0;
+						arrowGroup.position.y = 0;
+						arrowGroup.position.z = 0;
+					};
+					if (roverDirection === 0) arrowGroup.position.z = -Math.sin(count) * 50;
+					if (roverDirection === 2) arrowGroup.position.z = Math.sin(count) * 50;
+					else if (roverDirection === 1) arrowGroup.position.x = Math.sin(count) * 50;
+					else if (roverDirection === 3) arrowGroup.position.x = -Math.sin(count) * 50;
+					count += 0.01;
+					if (count > Math.PI) count = 0;
+				}, 1);
 			}
 
+			function arrowAnimeStop() {
+				opacityAnime(arrowGroup.children[0], false, 1.0);
+				opacityAnime(arrowGroup.children[1], false, 1.0);
+			}
+
+			function visibleAllWalls() {
+				const walls = [backWall, rightWall, frontWall, leftWall];
+				opacityAnime(walls[0], false);
+				opacityAnime(walls[1], false);
+				opacityAnime(walls[2], false);
+				opacityAnime(walls[3], false);
+			}
+
+			//Logging
 			function addLog(text) {
 				const now = new Date;
 				const newNode = document.createElement("div");
@@ -195,6 +249,7 @@
 				pElement.insertBefore(newNode, pElement.firstChild);
 			}
 
+			//MQTT
 			const client = new Paho.MQTT.Client("broker.mqtt-dashboard.com", 8000, "clientId-wREnNxL12n");
 			client.onConnectionLost = onConnectionLost;
 			client.onMessageArrived = onMessageArrived;
@@ -215,30 +270,37 @@
 			let before = null;
 
 			function onMessageArrived(message) {
+				const walls = [backWall, rightWall, frontWall, leftWall];
 				if (message.payloadString == "0") {
-					if (before === message.payloadString) return;
-					else before = message.payloadString;
+					// if (before === message.payloadString) return;
+					// else before = message.payloadString;					
+					arrowAnimeStart();
 					addLog("Go straight");
 					visibleAllWalls();
 				} else if (message.payloadString == "1") {
-					if (before === message.payloadString) return;
-					else before = message.payloadString;
+					// if (before === message.payloadString) return;
+					// else before = message.payloadString;
+					arrowAnimeStop();
+					opacityAnime(walls[(0 + roverDirection) % 4], true, 0.5);
 					addLog("Detect front side wall");
 					addLog("Stop");
-					wallAnime(true, 0);
 				} else if (message.payloadString == "2") {
-					if (before === message.payloadString) return;
-					else before = message.payloadString;
-					wallAnime(true, 3);
-					turnAnime(-Math.PI / 2, 100);
+					// if (before === message.payloadString) return;
+					// else before = message.payloadString;
+					arrowAnimeStop();
+					opacityAnime(walls[(3 + roverDirection) % 4], true, 0.5);
+					rotateAnime(rover, -Math.PI / 2, 100);
+					rotateAnime(arrowGroup, -Math.PI / 2, 100);
 					roverDirection = (roverDirection + 1) % 4;
 					addLog("Detect left side wall");
 					addLog("Turn right");
 				} else if (message.payloadString == "3") {
-					if (before === message.payloadString) return;
-					else before = message.payloadString;
-					wallAnime(true, 1);
-					turnAnime(Math.PI / 2, 100);
+					// if (before === message.payloadString) return;
+					// else before = message.payloadString;
+					arrowAnimeStop();
+					opacityAnime(walls[(1 + roverDirection) % 4], true, 0.5);
+					rotateAnime(rover, Math.PI / 2, 100);
+					rotateAnime(arrowGroup, Math.PI / 2, 100);
 					roverDirection = (roverDirection + 3) % 4;
 					addLog("Detect right side wall");
 					addLog("Turn left");
