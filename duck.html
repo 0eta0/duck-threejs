@@ -295,19 +295,19 @@
 					if (before === message.payloadString) return;
 					else before = message.payloadString;
 					arrowAnimeStop();
-					rotateAnime(rover, -Math.PI / 2, 100);
-					rotateAnime(arrowGroup, -Math.PI / 2, 100);
-					roverDirection = (roverDirection + 1) % 4;
-					addLog("Turn right");
-				} else if (message.payloadString == "3") {
-					if (before === message.payloadString) return;
-					else before = message.payloadString;
-					arrowAnimeStop();
 					rotateAnime(rover, Math.PI / 2, 100);
 					rotateAnime(arrowGroup, Math.PI / 2, 100);
 					roverDirection = (roverDirection + 3) % 4;
 					addLog("Turn left");
-				}else {
+				} else if (message.payloadString == "3") {
+					if (before === message.payloadString) return;
+					else before = message.payloadString;
+					arrowAnimeStop();
+					rotateAnime(rover, -Math.PI / 2, 100);
+					rotateAnime(arrowGroup, -Math.PI / 2, 100);
+					roverDirection = (roverDirection + 1) % 4;
+					addLog("Turn right");
+				} else {
 					console.log("OTHER CODE COMMING", message.payloadString);
 				}
 			};
